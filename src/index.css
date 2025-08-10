@@ -60,5 +60,5 @@
 
 /* Custom styles */
 body.dark {
-  @apply dark;
+  color-scheme: dark;
 }
