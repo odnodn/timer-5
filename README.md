@@ -1,7 +1,5 @@
 Fork: angular -> react / shadcn / zustand
 
-<div align="center"><img src="src/assets/favicon.svg" width='64' height='64'></div>
-
 # Timer
 
 [Timer](https://klaster1.github.io/timer-5) is a simple time tracking tool. Create a task, click "Start"/"Stop", see how much the task took, repeat.
