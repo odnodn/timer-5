@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Build and Deploy to GitHub Pages
 
 on:
   push:
@@ -11,52 +11,67 @@ on:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Adding Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22.14.0
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Cache Angular build output
-        id: cache-ng-build
+      - name: Cache Vite build output
+        id: cache-vite-build
         uses: actions/cache@v4
         with:
           path: dist
-          key: ng-build-${{ hashFiles('package-lock.json', 'src/**', 'angular.json', 'scripts/gh-pages-before-add.js') }}
+          key: vite-build-${{ hashFiles('package-lock.json', 'src/**', 'vite.config.ts', 'index.html') }}
           restore-keys: |
-            ng-build-${{ hashFiles('package-lock.json', 'src/**', 'angular.json', 'scripts/gh-pages-before-add.js') }}
+            vite-build-${{ hashFiles('package-lock.json', 'src/**', 'vite.config.ts', 'index.html') }}
+
+      - name: Lint Code
+        run: npm run lint
 
       - name: Build Application
         run: npm run build
-        if: steps.cache-ng-build.outputs.cache-hit != 'true'
+        if: steps.cache-vite-build.outputs.cache-hit != 'true'
 
-      - name: Run TestCafe tests in container
+      - name: Run E2E Tests
         run: |
-          docker run -w /opt/tests -v ${{ github.workspace }}:/opt/tests timbru31/node-chrome:22 npx testcafe chrome:headless ./e2e/fixtures --app="npm run serve:ci" -c 4
+          docker run -w /opt/tests -v ${{ github.workspace }}:/opt/tests timbru31/node-chrome:22 npx testcafe chrome:headless ./e2e/fixtures --app="npm run preview" -c 4
 
-      - name: Upload Artifacts
+      - name: Upload Test Artifacts
         uses: actions/upload-artifact@v4
         if: failure()
         with:
+          name: test-results
           path: |
             e2e/screenshots
             e2e/visual-regression-screenshots
           if-no-files-found: ignore
-          retention-days: 1
-          compression-level: 0
-          overwrite: true
+          retention-days: 7
 
-      - name: Deploy to Github Pages
+      - name: Setup GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          git remote set-url origin https://git:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-          npm run deploy -- -u "github-actions-bot <support+actions@github.com>"
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
+        id: deployment
+        uses: actions/deploy-pages@v4
