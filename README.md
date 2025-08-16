@@ -1,4 +1,4 @@
-Fork: refactored versions from ‘angular‘ -> react / shadcn / zustand
+Fork: refactored versions from ´angular´ -> react / shadcn / zustand
 
 # Timer
 
