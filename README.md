@@ -1,4 +1,4 @@
-Fork: refactored versions from ´angular´ -> react / shadcn / zustand
+Fork: refactored `multi timer with round labs` version from `angular` -> `react` / shadcn / zustand
 
 # Timer
 
