@@ -8,8 +8,8 @@ import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog
 import { TaskActionsDialog } from '@/components/ui/task-actions-dialog';
 import { SessionEditDialog } from '@/components/ui/session-edit-dialog';
 import { CountdownTimer } from '@/components/ui/countdown-timer';
-import { ArrowLeft, Play, Pause, Edit, Trash2, Settings } from 'lucide-react';
-import { formatDuration, formatDate } from '@/lib/format';
+import { ArrowLeft, Play, Pause, Edit, Trash2, Settings, CalendarDays, Clock } from 'lucide-react';
+import { formatDuration, formatCompactDate, formatCompactTime } from '@/lib/format';
 import { Session, TaskState } from '@/lib/task';
 
 export function TaskScreen() {
@@ -35,12 +35,27 @@ export function TaskScreen() {
     index: number;
   } | null>(null);
   const [pendingComment, setPendingComment] = React.useState<string>('');
+  const [now, setNow] = React.useState(Date.now());
 
   useEffect(() => {
     setCurrentTaskId(taskId);
   }, [taskId, setCurrentTaskId]);
 
   const task = getCurrentTask();
+
+  // Update time every second when there's a running session
+  React.useEffect(() => {
+    if (!task) return;
+    
+    const isRunning = task.sessions.some(s => !s.end);
+    if (!isRunning) return;
+    
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [task?.sessions]);
 
   const handleBack = () => {
     navigate(`/${state}`);
@@ -105,7 +120,7 @@ export function TaskScreen() {
     if (session.end) {
       return total + (session.end - session.start);
     } else {
-      return total + (Date.now() - session.start);
+      return total + (now - session.start);
     }
   }, 0);
 
@@ -180,9 +195,33 @@ export function TaskScreen() {
       {/* Right Panel - Sessions */}
       <div className="flex-1 flex flex-col">
         <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold">
-            Sessions ({task.sessions.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              Sessions ({task.sessions.length})
+            </h2>
+            <div className="text-sm">
+              <div className="flex items-center gap-4">
+                <span className="text-muted-foreground">
+                  Total: <span className="font-mono">{formatDuration(totalDuration)}</span>
+                </span>
+                {task.countdownDuration && isRunning && (() => {
+                  const runningSession = task.sessions.find(s => !s.end);
+                  if (runningSession) {
+                    const elapsed = now - runningSession.start;
+                    const exceeded = Math.max(0, elapsed - task.countdownDuration);
+                    const isExceeding = exceeded > 0;
+                    return (
+                      <span className={`font-mono ${isExceeding ? 'text-red-600' : 'text-green-600'}`}>
+                        {isExceeding ? 'Exceeded: ' : 'Remaining: '}
+                        {formatDuration(isExceeding ? exceeded : task.countdownDuration - elapsed)}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          </div>
         </div>
         
         <div className="flex-1 overflow-auto p-4">
@@ -198,16 +237,17 @@ export function TaskScreen() {
               {task.sessions.map((session, index) => {
                 const duration = session.end 
                   ? session.end - session.start 
-                  : Date.now() - session.start;
+                  : now - session.start;
                 const isSessionRunning = !session.end;
 
                 return (
                   <Card key={`${session.start}-${index}`}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          {/* Duration */}
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium font-mono">
                               {formatDuration(duration)}
                             </span>
                             {isSessionRunning && (
@@ -216,22 +256,33 @@ export function TaskScreen() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Started: {formatDate(new Date(session.start))}
-                            {session.end && (
-                              <span className="block">
-                                Ended: {formatDate(new Date(session.end))}
-                              </span>
-                            )}
-                            {session.comment && (
-                              <span className="block text-blue-600 font-medium">
-                                {session.comment}
-                              </span>
-                            )}
+                          
+                          {/* Start Date/Time */}
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <CalendarDays className="h-3 w-3" />
+                            <span>{formatCompactDate(new Date(session.start))}</span>
+                            <Clock className="h-3 w-3 ml-1" />
+                            <span>{formatCompactTime(new Date(session.start))}</span>
                           </div>
+                          
+                          {/* End Date/Time */}
+                          {session.end && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>→</span>
+                              <span>{formatCompactDate(new Date(session.end))}</span>
+                              <span>{formatCompactTime(new Date(session.end))}</span>
+                            </div>
+                          )}
+                          
+                          {/* Comment */}
+                          {session.comment && (
+                            <div className="text-sm text-blue-600 font-medium truncate">
+                              {session.comment}
+                            </div>
+                          )}
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 ml-2">
                           <Button 
                             variant="outline" 
                             size="sm"

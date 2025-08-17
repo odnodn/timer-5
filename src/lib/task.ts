@@ -145,10 +145,11 @@ export const getCountdownProgress = (task: Task, now: number): number => {
 };
 
 export const getCountdownColor = (progress: number): string => {
-  if (progress >= 0.8) return 'green';
-  if (progress >= 0.6) return 'yellow'; 
-  if (progress >= 0.4) return 'orange';
-  return 'red';
+  const remainingProgress = 1 - progress; // Invert to use remaining time instead of elapsed
+  if (remainingProgress >= 0.6) return 'green';  // 60% or more remaining = green
+  if (remainingProgress >= 0.4) return 'yellow'; // 40% or more remaining = yellow
+  if (remainingProgress >= 0.2) return 'orange'; // 20% or more remaining = orange
+  return 'red'; // Less than 20% remaining = red
 };
 
 export type FilterParams = {

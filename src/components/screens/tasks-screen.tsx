@@ -6,6 +6,7 @@ import { TaskState } from '@/lib/task';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog';
+import { TaskCreationDialog } from '@/components/ui/task-creation-dialog';
 import { CountdownTimer } from '@/components/ui/countdown-timer';
 import { Plus, Play, Pause, Trash2 } from 'lucide-react';
 import { formatDuration } from '@/lib/format';
@@ -26,8 +27,10 @@ export function TasksScreen() {
 
   // Dialog states
   const [showCommentDialog, setShowCommentDialog] = React.useState(false);
+  const [showCreateTaskDialog, setShowCreateTaskDialog] = React.useState(false);
   const [pendingTaskId, setPendingTaskId] = React.useState<string>('');
   const [pendingComment, setPendingComment] = React.useState<string>('');
+  const [now, setNow] = React.useState(Date.now());
 
   useEffect(() => {
     setCurrentTaskState(state);
@@ -35,12 +38,25 @@ export function TasksScreen() {
 
   const tasks = getCurrentTasks();
 
-  const handleCreateTask = async () => {
-    const name = prompt('Enter task name:');
-    if (name?.trim()) {
-      const taskId = createTask(name.trim());
-      navigate(`/${state}/${taskId}`);
-    }
+  // Update time every second when there are running tasks
+  React.useEffect(() => {
+    const hasRunningTasks = tasks.some(task => task.sessions.some(s => !s.end));
+    if (!hasRunningTasks) return;
+    
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  const handleCreateTask = () => {
+    setShowCreateTaskDialog(true);
+  };
+
+  const handleCreateTaskWithConfig = (name: string, state: TaskState, countdownDuration?: number) => {
+    const taskId = createTask(name, state, countdownDuration);
+    navigate(`/${state}/${taskId}`);
   };
 
   const handleStartTask = (taskId: string) => {
@@ -103,7 +119,7 @@ export function TasksScreen() {
                 if (session.end) {
                   return total + (session.end - session.start);
                 } else {
-                  return total + (Date.now() - session.start);
+                  return total + (now - session.start);
                 }
               }, 0);
 
@@ -178,6 +194,13 @@ export function TasksScreen() {
         }}
         onSelect={setPendingComment}
         onStart={() => handleStartWithComment(pendingComment)}
+      />
+
+      {/* Task Creation Dialog */}
+      <TaskCreationDialog
+        isOpen={showCreateTaskDialog}
+        onClose={() => setShowCreateTaskDialog(false)}
+        onCreate={handleCreateTaskWithConfig}
       />
     </div>
   );

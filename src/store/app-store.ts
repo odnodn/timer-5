@@ -31,7 +31,7 @@ export interface AppState {
 export interface AppActions {
   // Task actions
   loadTasks: (tasks: Record<string, Task>) => void;
-  createTask: (name: string) => string;
+  createTask: (name: string, state?: TaskState, countdownDuration?: number) => string;
   deleteTask: (taskId: string) => void;
   renameTask: (taskId: string, name: string) => void;
   updateTaskState: (taskId: string, state: TaskState) => void;
@@ -89,14 +89,15 @@ export const useAppStore = create<AppStore>()(
         state.tasks = tasks;
       }),
       
-      createTask: (name) => {
+      createTask: (name, taskState, countdownDuration) => {
         const taskId = makeTaskId();
         set((state) => {
           state.tasks[taskId] = {
             id: taskId,
             name,
-            state: TaskState.active,
+            state: taskState || TaskState.active,
             sessions: [],
+            countdownDuration,
           };
         });
         return taskId;
