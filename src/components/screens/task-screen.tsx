@@ -10,7 +10,7 @@ import { SessionEditDialog } from '@/components/ui/session-edit-dialog';
 import { CountdownTimer } from '@/components/ui/countdown-timer';
 import { ArrowLeft, Play, Pause, Edit, Trash2, Settings, CalendarDays, Clock } from 'lucide-react';
 import { formatDuration, formatCompactDate, formatCompactTime } from '@/lib/format';
-import { Session, TaskState } from '@/lib/task';
+import { Session, TaskState, getLastTaskComment } from '@/lib/task';
 
 export function TaskScreen() {
   const params = useParams();
@@ -314,6 +314,7 @@ export function TaskScreen() {
         onClose={() => setShowCommentDialog(false)}
         onSelect={setPendingComment}
         onStart={() => handleStartWithComment(pendingComment)}
+        lastComment={getLastTaskComment(task)}
       />
 
       <TaskActionsDialog

@@ -2,7 +2,7 @@ import React from 'react';
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/app-store';
-import { TaskState } from '@/lib/task';
+import { TaskState, getLastTaskComment } from '@/lib/task';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog';
@@ -20,7 +20,8 @@ export function TasksScreen() {
     createTask,
     startTask,
     stopTask,
-    deleteTask
+    deleteTask,
+    getTaskById
   } = useAppStore();
 
   const state = params.state || 'active';
@@ -194,6 +195,10 @@ export function TasksScreen() {
         }}
         onSelect={setPendingComment}
         onStart={() => handleStartWithComment(pendingComment)}
+        lastComment={(() => {
+          const task = pendingTaskId ? getTaskById(pendingTaskId) : undefined;
+          return task ? getLastTaskComment(task) : undefined;
+        })()}
       />
 
       {/* Task Creation Dialog */}

@@ -238,3 +238,12 @@ export const filterTaskSessions = (task: Task, params: Pick<FilterParams, 'from'
   const sessions = filterByTo(params, filterByFrom(params, task))?.sessions;
   return sessions ? { ...task, sessions } : task;
 };
+
+export const getLastTaskComment = (task: Task): string | undefined => {
+  // Get the most recent session that has a comment
+  const sessionsWithComments = task.sessions
+    .filter(session => session.comment && session.comment.trim() !== '')
+    .sort((a, b) => b.start - a.start);
+  
+  return sessionsWithComments.length > 0 ? sessionsWithComments[0].comment : undefined;
+};

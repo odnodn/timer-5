@@ -9,15 +9,24 @@ interface CommentSelectionDialogProps {
   onClose: () => void;
   onSelect: (comment: string) => void;
   onStart: () => void;
+  lastComment?: string; // Suggest the last used comment
 }
 
 export function CommentSelectionDialog({ 
   isOpen, 
   onClose, 
   onSelect, 
-  onStart 
+  onStart,
+  lastComment
 }: CommentSelectionDialogProps) {
   const [selectedComment, setSelectedComment] = React.useState<string>('');
+
+  // Set the last comment as selected when dialog opens
+  React.useEffect(() => {
+    if (isOpen && lastComment && DEFAULT_COMMENT_OPTIONS.includes(lastComment as any)) {
+      setSelectedComment(lastComment);
+    }
+  }, [isOpen, lastComment]);
 
   const handleCommentSelect = (comment: string) => {
     setSelectedComment(comment);
