@@ -42,30 +42,30 @@ export function CountdownTimer({ task, className }: CountdownTimerProps) {
     red: 'stroke-red-600',
   };
 
-  const circumference = 2 * Math.PI * 16; // radius = 16
+  const circumference = 2 * Math.PI * 12; // radius = 12 (smaller)
   const strokeDasharray = circumference;
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       {/* Progress Circle */}
-      <div className="relative w-8 h-8">
-        <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 36 36">
+      <div className="relative w-6 h-6">
+        <svg className="w-6 h-6 transform -rotate-90" viewBox="0 0 28 28">
           <circle
-            cx="18"
-            cy="18"
-            r="16"
+            cx="14"
+            cy="14"
+            r="12"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="3"
             className="text-gray-200"
           />
           <circle
-            cx="18"
-            cy="18"
-            r="16"
+            cx="14"
+            cy="14"
+            r="12"
             fill="none"
-            strokeWidth="2"
+            strokeWidth="3"
             strokeDasharray={strokeDasharray}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"

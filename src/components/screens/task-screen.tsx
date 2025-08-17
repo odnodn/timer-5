@@ -35,12 +35,27 @@ export function TaskScreen() {
     index: number;
   } | null>(null);
   const [pendingComment, setPendingComment] = React.useState<string>('');
+  const [now, setNow] = React.useState(Date.now());
 
   useEffect(() => {
     setCurrentTaskId(taskId);
   }, [taskId, setCurrentTaskId]);
 
   const task = getCurrentTask();
+
+  // Update time every second when there's a running session
+  React.useEffect(() => {
+    if (!task) return;
+    
+    const isRunning = task.sessions.some(s => !s.end);
+    if (!isRunning) return;
+    
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [task?.sessions]);
 
   const handleBack = () => {
     navigate(`/${state}`);
@@ -105,7 +120,7 @@ export function TaskScreen() {
     if (session.end) {
       return total + (session.end - session.start);
     } else {
-      return total + (Date.now() - session.start);
+      return total + (now - session.start);
     }
   }, 0);
 
@@ -198,7 +213,7 @@ export function TaskScreen() {
               {task.sessions.map((session, index) => {
                 const duration = session.end 
                   ? session.end - session.start 
-                  : Date.now() - session.start;
+                  : now - session.start;
                 const isSessionRunning = !session.end;
 
                 return (

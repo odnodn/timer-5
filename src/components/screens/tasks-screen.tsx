@@ -28,12 +28,25 @@ export function TasksScreen() {
   const [showCommentDialog, setShowCommentDialog] = React.useState(false);
   const [pendingTaskId, setPendingTaskId] = React.useState<string>('');
   const [pendingComment, setPendingComment] = React.useState<string>('');
+  const [now, setNow] = React.useState(Date.now());
 
   useEffect(() => {
     setCurrentTaskState(state);
   }, [state, setCurrentTaskState]);
 
   const tasks = getCurrentTasks();
+
+  // Update time every second when there are running tasks
+  React.useEffect(() => {
+    const hasRunningTasks = tasks.some(task => task.sessions.some(s => !s.end));
+    if (!hasRunningTasks) return;
+    
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   const handleCreateTask = async () => {
     const name = prompt('Enter task name:');
@@ -103,7 +116,7 @@ export function TasksScreen() {
                 if (session.end) {
                   return total + (session.end - session.start);
                 } else {
-                  return total + (Date.now() - session.start);
+                  return total + (now - session.start);
                 }
               }, 0);
 
