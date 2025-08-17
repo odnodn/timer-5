@@ -26,8 +26,8 @@ export type Session = {
   comment?: string; // Optional comment for the session
 };
 
-export const isTask = (v: any) => {
-  return typeof v === 'object' && v.id && v.name && v.state && Array.isArray(v.sessions) ? (v as Task) : null;
+export const isTask = (v: unknown) => {
+  return typeof v === 'object' && v && 'id' in v && 'name' in v && 'state' in v && 'sessions' in v && Array.isArray((v as any).sessions) ? (v as Task) : null;
 };
 
 export const isTaskRunning = (t?: Task): boolean => !!t && !!t.sessions && t.sessions.some((s) => !s.end);
