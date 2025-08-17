@@ -1,10 +1,16 @@
+import React from 'react';
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Play, Pause, Edit, Trash2 } from 'lucide-react';
+import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog';
+import { TaskActionsDialog } from '@/components/ui/task-actions-dialog';
+import { SessionEditDialog } from '@/components/ui/session-edit-dialog';
+import { CountdownTimer } from '@/components/ui/countdown-timer';
+import { ArrowLeft, Play, Pause, Edit, Trash2, Settings } from 'lucide-react';
 import { formatDuration, formatDate } from '@/lib/format';
+import { Session, TaskState } from '@/lib/task';
 
 export function TaskScreen() {
   const params = useParams();
@@ -15,10 +21,20 @@ export function TaskScreen() {
     startTask,
     stopTask,
     deleteSession,
-    getSessionId
+    getSessionId,
+    updateTaskState
   } = useAppStore();
 
   const { state, taskId } = params;
+
+  // Dialog states
+  const [showCommentDialog, setShowCommentDialog] = React.useState(false);
+  const [showTaskActions, setShowTaskActions] = React.useState(false);
+  const [editingSession, setEditingSession] = React.useState<{
+    session: Session;
+    index: number;
+  } | null>(null);
+  const [pendingComment, setPendingComment] = React.useState<string>('');
 
   useEffect(() => {
     setCurrentTaskId(taskId);
@@ -32,7 +48,13 @@ export function TaskScreen() {
 
   const handleStartTask = () => {
     if (task) {
-      startTask(task.id, Date.now());
+      setShowCommentDialog(true);
+    }
+  };
+
+  const handleStartWithComment = (comment: string) => {
+    if (task) {
+      startTask(task.id, Date.now(), comment);
     }
   };
 
@@ -42,11 +64,26 @@ export function TaskScreen() {
     }
   };
 
-  const handleDeleteSession = (session: any) => {
+  const handleTaskStatusFinished = () => {
+    if (task) {
+      // Stop any running sessions first
+      const runningSession = task.sessions.find(s => !s.end);
+      if (runningSession) {
+        stopTask(task.id, Date.now());
+      }
+      updateTaskState(task.id, TaskState.finished);
+    }
+  };
+
+  const handleDeleteSession = (session: Session) => {
     if (task && confirm('Are you sure you want to delete this session?')) {
       const sessionId = getSessionId(session);
       deleteSession(task.id, sessionId);
     }
+  };
+
+  const handleEditSession = (session: Session, index: number) => {
+    setEditingSession({ session, index });
   };
 
   if (!task) {
@@ -73,105 +110,176 @@ export function TaskScreen() {
   }, 0);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="flex h-full">
+      {/* Left Panel - Task Info */}
+      <div className="w-1/3 border-r border-border flex flex-col">
+        {/* Header */}
+        <div className="border-b border-border p-4">
+          <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{task.name}</h1>
-              <p className="text-muted-foreground">
-                Total: {formatDuration(totalDuration)}
-                {isRunning && <span className="ml-2 text-green-600 font-medium">• Running</span>}
+            <div className="flex-1">
+              <h1 className="text-xl font-bold">{task.name}</h1>
+              <p className="text-sm text-muted-foreground capitalize">
+                Status: {task.state}
               </p>
             </div>
+            <Button variant="outline" onClick={() => setShowTaskActions(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          {/* Task Controls */}
+          <div className="flex items-center gap-2 mb-4">
             {isRunning ? (
-              <Button onClick={handleStopTask}>
+              <Button onClick={handleStopTask} className="flex-1">
                 <Pause className="h-4 w-4 mr-1" />
                 Stop
               </Button>
             ) : (
-              <Button onClick={handleStartTask}>
+              <Button onClick={handleStartTask} className="flex-1">
                 <Play className="h-4 w-4 mr-1" />
                 Start
               </Button>
+            )}
+            {task.state !== 'finished' && (
+              <Button variant="outline" onClick={handleTaskStatusFinished}>
+                Finish
+              </Button>
+            )}
+          </div>
+
+          {/* Countdown Timer */}
+          {isRunning && task.countdownDuration && (
+            <div className="mb-4">
+              <CountdownTimer task={task} />
+            </div>
+          )}
+
+          {/* Task Stats */}
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Total Duration:</span>
+              <span className="font-mono">{formatDuration(totalDuration)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Sessions:</span>
+              <span>{task.sessions.length}</span>
+            </div>
+            {isRunning && (
+              <div className="flex justify-between text-green-600">
+                <span>Status:</span>
+                <span className="font-medium">Running</span>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Sessions */}
-      <div className="flex-1 overflow-auto p-4">
-        {task.sessions.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <p className="text-lg">No sessions yet</p>
-              <p className="text-sm">Start the timer to create your first session</p>
+      {/* Right Panel - Sessions */}
+      <div className="flex-1 flex flex-col">
+        <div className="border-b border-border p-4">
+          <h2 className="text-lg font-semibold">
+            Sessions ({task.sessions.length})
+          </h2>
+        </div>
+        
+        <div className="flex-1 overflow-auto p-4">
+          {task.sessions.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg">No sessions yet</p>
+                <p className="text-sm">Start the timer to create your first session</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">
-              Sessions ({task.sessions.length})
-            </h2>
-            
-            {task.sessions.map((session, index) => {
-              const duration = session.end 
-                ? session.end - session.start 
-                : Date.now() - session.start;
-              const isRunning = !session.end;
+          ) : (
+            <div className="space-y-3">
+              {task.sessions.map((session, index) => {
+                const duration = session.end 
+                  ? session.end - session.start 
+                  : Date.now() - session.start;
+                const isSessionRunning = !session.end;
 
-              return (
-                <Card key={`${session.start}-${index}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+                return (
+                  <Card key={`${session.start}-${index}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">
+                              {formatDuration(duration)}
+                            </span>
+                            {isSessionRunning && (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                Running
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Started: {formatDate(new Date(session.start))}
+                            {session.end && (
+                              <span className="block">
+                                Ended: {formatDate(new Date(session.end))}
+                              </span>
+                            )}
+                            {session.comment && (
+                              <span className="block text-blue-600 font-medium">
+                                {session.comment}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {formatDuration(duration)}
-                          </span>
-                          {isRunning && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              Running
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Started: {formatDate(new Date(session.start))}
-                          {session.end && (
-                            <span className="ml-2">
-                              Ended: {formatDate(new Date(session.end))}
-                            </span>
-                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditSession(session, index)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteSession(session)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteSession(session)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Dialogs */}
+      <CommentSelectionDialog
+        isOpen={showCommentDialog}
+        onClose={() => setShowCommentDialog(false)}
+        onSelect={setPendingComment}
+        onStart={() => handleStartWithComment(pendingComment)}
+      />
+
+      <TaskActionsDialog
+        task={task}
+        isOpen={showTaskActions}
+        onClose={() => setShowTaskActions(false)}
+      />
+
+      {editingSession && (
+        <SessionEditDialog
+          session={editingSession.session}
+          sessionIndex={editingSession.index}
+          taskId={task.id}
+          isOpen={true}
+          onClose={() => setEditingSession(null)}
+        />
+      )}
     </div>
   );
 }

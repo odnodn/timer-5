@@ -37,12 +37,15 @@ export interface AppActions {
   updateTaskState: (taskId: string, state: TaskState) => void;
   
   // Session actions
-  startTask: (taskId: string, timestamp: number) => void;
+  startTask: (taskId: string, timestamp: number, comment?: string) => void;
   stopTask: (taskId: string, timestamp: number) => void;
   editSession: (taskId: string, sessionIndex: number, session: Session) => void;
   deleteSession: (taskId: string, sessionId: SessionId) => void;
   splitSession: (taskId: string, sessionIndex: number, sessions: Session[]) => void;
   moveSessionToTask: (fromTaskId: string, toTaskId: string, session: Session) => void;
+  
+  // Countdown timer actions
+  setTaskCountdownDuration: (taskId: string, duration?: number) => void;
   
   // Theme actions
   setTheme: (theme: Theme) => void;
@@ -118,11 +121,15 @@ export const useAppStore = create<AppStore>()(
       }),
       
       // Session actions
-      startTask: (taskId, timestamp) => set((state) => {
+      startTask: (taskId, timestamp, comment) => set((state) => {
         const task = state.tasks[taskId];
         if (task) {
           task.state = TaskState.active;
-          task.sessions.push({ start: timestamp, end: undefined });
+          task.sessions.push({ 
+            start: timestamp, 
+            end: undefined,
+            comment: comment 
+          });
         }
       }),
       
@@ -173,6 +180,14 @@ export const useAppStore = create<AppStore>()(
               toTask.state = TaskState.active;
             }
           }
+        }
+      }),
+      
+      // Countdown timer actions
+      setTaskCountdownDuration: (taskId, duration) => set((state) => {
+        const task = state.tasks[taskId];
+        if (task) {
+          task.countdownDuration = duration;
         }
       }),
       
