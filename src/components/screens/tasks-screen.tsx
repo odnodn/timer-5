@@ -6,6 +6,7 @@ import { TaskState } from '@/lib/task';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog';
+import { TaskCreationDialog } from '@/components/ui/task-creation-dialog';
 import { CountdownTimer } from '@/components/ui/countdown-timer';
 import { Plus, Play, Pause, Trash2 } from 'lucide-react';
 import { formatDuration } from '@/lib/format';
@@ -26,6 +27,7 @@ export function TasksScreen() {
 
   // Dialog states
   const [showCommentDialog, setShowCommentDialog] = React.useState(false);
+  const [showCreateTaskDialog, setShowCreateTaskDialog] = React.useState(false);
   const [pendingTaskId, setPendingTaskId] = React.useState<string>('');
   const [pendingComment, setPendingComment] = React.useState<string>('');
   const [now, setNow] = React.useState(Date.now());
@@ -48,12 +50,13 @@ export function TasksScreen() {
     return () => clearInterval(interval);
   }, [tasks]);
 
-  const handleCreateTask = async () => {
-    const name = prompt('Enter task name:');
-    if (name?.trim()) {
-      const taskId = createTask(name.trim());
-      navigate(`/${state}/${taskId}`);
-    }
+  const handleCreateTask = () => {
+    setShowCreateTaskDialog(true);
+  };
+
+  const handleCreateTaskWithConfig = (name: string, state: TaskState, countdownDuration?: number) => {
+    const taskId = createTask(name, state, countdownDuration);
+    navigate(`/${state}/${taskId}`);
   };
 
   const handleStartTask = (taskId: string) => {
@@ -191,6 +194,13 @@ export function TasksScreen() {
         }}
         onSelect={setPendingComment}
         onStart={() => handleStartWithComment(pendingComment)}
+      />
+
+      {/* Task Creation Dialog */}
+      <TaskCreationDialog
+        isOpen={showCreateTaskDialog}
+        onClose={() => setShowCreateTaskDialog(false)}
+        onCreate={handleCreateTaskWithConfig}
       />
     </div>
   );

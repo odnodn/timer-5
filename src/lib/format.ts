@@ -22,3 +22,15 @@ export function formatDate(date: Date): string {
 export function formatTime(date: Date): string {
   return date.toLocaleTimeString();
 }
+
+export function formatCompactDate(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  return `${day}.${month}.`;
+}
+
+export function formatCompactTime(date: Date): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
