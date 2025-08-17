@@ -1,9 +1,12 @@
+import React from 'react';
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/app-store';
 import { TaskState } from '@/lib/task';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CommentSelectionDialog } from '@/components/ui/comment-selection-dialog';
+import { CountdownTimer } from '@/components/ui/countdown-timer';
 import { Plus, Play, Pause, Trash2 } from 'lucide-react';
 import { formatDuration } from '@/lib/format';
 
@@ -21,6 +24,11 @@ export function TasksScreen() {
 
   const state = params.state || 'active';
 
+  // Dialog states
+  const [showCommentDialog, setShowCommentDialog] = React.useState(false);
+  const [pendingTaskId, setPendingTaskId] = React.useState<string>('');
+  const [pendingComment, setPendingComment] = React.useState<string>('');
+
   useEffect(() => {
     setCurrentTaskState(state);
   }, [state, setCurrentTaskState]);
@@ -36,7 +44,15 @@ export function TasksScreen() {
   };
 
   const handleStartTask = (taskId: string) => {
-    startTask(taskId, Date.now());
+    setPendingTaskId(taskId);
+    setShowCommentDialog(true);
+  };
+
+  const handleStartWithComment = (comment: string) => {
+    if (pendingTaskId) {
+      startTask(pendingTaskId, Date.now(), comment);
+      setPendingTaskId('');
+    }
   };
 
   const handleStopTask = (taskId: string) => {
@@ -105,6 +121,9 @@ export function TasksScreen() {
                         <span className="text-sm text-muted-foreground">
                           {formatDuration(totalDuration)}
                         </span>
+                        {isRunning && task.countdownDuration && (
+                          <CountdownTimer task={task} className="text-xs" />
+                        )}
                         {isRunning ? (
                           <Button
                             variant="outline"
@@ -149,6 +168,17 @@ export function TasksScreen() {
           </div>
         )}
       </div>
+
+      {/* Comment Selection Dialog */}
+      <CommentSelectionDialog
+        isOpen={showCommentDialog}
+        onClose={() => {
+          setShowCommentDialog(false);
+          setPendingTaskId('');
+        }}
+        onSelect={setPendingComment}
+        onStart={() => handleStartWithComment(pendingComment)}
+      />
     </div>
   );
 }

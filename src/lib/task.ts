@@ -17,11 +17,13 @@ export type Task = {
   name: string;
   state: TaskState;
   sessions: Session[];
+  countdownDuration?: number; // Duration in milliseconds for countdown timer
 };
 
 export type Session = {
   start: Milliseconds;
   end?: Milliseconds;
+  comment?: string; // Optional comment for the session
 };
 
 export const isTask = (v: any) => {
@@ -112,6 +114,42 @@ export const tasksDuration =
       (acc, runningDuration) => (runningDuration ? acc + runningDuration(now) : acc),
       tasks.reduce((acc, task) => acc + completeTaskDuration(task), 0),
     );
+
+// Comment options configuration
+export const DEFAULT_COMMENT_OPTIONS = [
+  'geplant',
+  'aufUntersuchungWartend',
+  'aufArztWartend', 
+  'inUntersuchung',
+  'inBehandlung'
+] as const;
+
+export type CommentOption = typeof DEFAULT_COMMENT_OPTIONS[number];
+
+// Countdown timer utilities
+export const COUNTDOWN_DURATION_OPTIONS = [
+  { label: '5 min', value: 5 * 60 * 1000 },
+  { label: '10 min', value: 10 * 60 * 1000 },
+  { label: '15 min', value: 15 * 60 * 1000 },
+  { label: '20 min', value: 20 * 60 * 1000 },
+] as const;
+
+export const getCountdownProgress = (task: Task, now: number): number => {
+  if (!task.countdownDuration) return 0;
+  
+  const runningSession = getTaskRunningSession(task);
+  if (!runningSession) return 0;
+  
+  const elapsed = now - runningSession.start;
+  return Math.min(elapsed / task.countdownDuration, 1);
+};
+
+export const getCountdownColor = (progress: number): string => {
+  if (progress >= 0.8) return 'green';
+  if (progress >= 0.6) return 'yellow'; 
+  if (progress >= 0.4) return 'orange';
+  return 'red';
+};
 
 export type FilterParams = {
   state?: RouteTaskState;
